@@ -1,50 +1,63 @@
+from flask import Flask, request, jsonify, render_template
 import pandas as pd
 import faiss
 import requests
 import numpy as np
-from tqdm import tqdm  # progress bar in CLI
 
-# Load data
-df = pd.read_csv('/home/Python_llms_projects/netflix_titles.csv')
+app = Flask(__name__)
 
-# Function to create text format
+
+#FIXME: CHANGE THIS PATH BY CONSIDERING DJANGO PATH BASE PATH + FILE_NAME
+# Load data and FAISS index
+df = pd.read_csv('C:/Users/aefra/OneDrive/Desktop/embeddings/netflix_titles.csv')
+index = faiss.read_index('C:/Users/aefra/OneDrive/Desktop/embeddings/faiss_index.bin')
+
+# Helper function
 def create_text_format(row):
+    """Formats a single row into a descriptive text."""
     text_format = f"""
-Type: {row['type']}
-Title: {row['title']}
-Director: {row['director']}
-Cast: {row['cast']}
-Released: {row['release_year']}
-Genres: {row['listed_in']}
-Description: {row['description']}
-"""
-    return text_format
+    Type: {row.get('type', 'Unknown')}
+    Title: {row.get('title', 'Unknown')}
+    Director: {row.get('director', 'Unknown')}
+    Cast: {row.get('cast', 'Unknown')}
+    Released: {row.get('release_year', 'Unknown')}
+    Genres: {row.get('listed_in', 'Unknown')}
+    Description: {row.get('description', 'No description available')}
+    """
+    return text_format.strip()
 
-# Add the 'text_format' column
-df['text_format'] = df.apply(create_text_format, axis=1)
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-# FAISS index setup
-dim = 4069  # Ensure this matches the embedding size
-index = faiss.IndexFlatL2(dim)
+@app.route('/recommend', methods=['POST'])
+def recommend():
+    data = request.json
+    user_prompt = data.get('prompt', '')
 
-# Prepare numpy array for embeddings
-x = np.zeros((len(df['text_format']), dim), dtype='float32')
-
-# Fetch embeddings and add to FAISS index
-for i, representation in tqdm(enumerate(df['text_format']), total=len(df['text_format'])):
+    # Get embedding from external service
     try:
-        res = requests.post(
-            'http://localhost:11434/api/embeddings',
-            json={'model': 'llama3.2', 'prompt': representation},
-        )
-        res.raise_for_status()  # Raise an error for HTTP issues
-        embedding = res.json().get('embedding')
-        if embedding and len(embedding) == dim:
-            x[i] = np.array(embedding, dtype='float32')
-        else:
-            print(f"Invalid embedding size for row {i}")
+        res = requests.post('http://localhost:11434/api/embeddings', json={'model': 'llama2', 'prompt': user_prompt})
+        res.raise_for_status()
+        embedding = np.array([res.json()['embedding']], dtype='float32')
     except Exception as e:
-        print(f"Error processing row {i}: {e}")
+        return jsonify({"error": f"Failed to fetch embeddings: {str(e)}"}), 500
 
-# Add embeddings to FAISS index
-index.add(x)
+    # Search FAISS index
+    D, I = index.search(embedding, 5)
+
+    # Retrieve and format results
+    recommendations = []
+    seen_titles = set()
+    for idx in I.flatten():
+        if idx < len(df):
+            match_row = df.iloc[idx]
+            title = match_row.get('title', 'Unknown')
+            if title not in seen_titles:
+                seen_titles.add(title)
+                recommendations.append(create_text_format(match_row))
+
+    return jsonify({"recommendations": recommendations})
+
+if __name__ == '__main__':
+    app.run(debug=True)

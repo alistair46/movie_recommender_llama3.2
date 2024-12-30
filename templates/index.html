@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Recommendation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <div class="container mx-auto p-6">
+        <h1 class="text-4xl font-bold text-center mb-4">Movie Recommendation System</h1>
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+            <form id="recommendationForm" class="space-y-4">
+                <textarea
+                    id="moviePrompt"
+                    rows="4"
+                    class="w-full p-3 border border-gray-300 rounded-lg"
+                    placeholder="Describe a movie you like..."
+                ></textarea>
+                <button
+                    type="button"
+                    onclick="getRecommendations()"
+                    class="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600"
+                >
+                    Get Recommendations
+                </button>
+            </form>
+        </div>
+        <div id="results" class="mt-6 space-y-4"></div>
+    </div>
+
+    <script>
+        async function getRecommendations() {
+            const prompt = document.getElementById('moviePrompt').value;
+            const response = await fetch('/recommend', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt }),
+            });
+
+            const data = await response.json();
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+
+            if (response.ok) {
+                data.recommendations.forEach(rec => {
+                    const recDiv = document.createElement('div');
+                    recDiv.classList.add('bg-white', 'p-4', 'rounded-lg', 'shadow-md');
+                    recDiv.innerHTML = `<pre>${rec}</pre>`;
+                    resultsDiv.appendChild(recDiv);
+                });
+            } else {
+                resultsDiv.innerHTML = `<p class="text-red-500">${data.error}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
