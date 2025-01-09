@@ -10,7 +10,7 @@ app = Flask(__name__)
 #FIXME: CHANGE THIS PATH BY CONSIDERING DJANGO PATH BASE PATH + FILE_NAME
 # Load data and FAISS index
 df = pd.read_csv('C:/Users/aefra/OneDrive/Desktop/embeddings/netflix_titles.csv')
-index = faiss.read_index('C:/Users/aefra/OneDrive/Desktop/embeddings/faiss_index.bin')
+faiss_index = faiss.read_index('C:/Users/aefra/OneDrive/Desktop/embeddings/faiss_index.bin')
 
 # Helper function
 def create_text_format(row):
@@ -44,7 +44,7 @@ def recommend():
         return jsonify({"error": f"Failed to fetch embeddings: {str(e)}"}), 500
 
     # Search FAISS index
-    D, I = index.search(embedding, 5)
+    D, I = faiss_index.search(embedding, 5)
 
     # Retrieve and format results
     recommendations = []
