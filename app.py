@@ -3,14 +3,20 @@ import pandas as pd
 import faiss
 import requests
 import numpy as np
+from pathlib import Path
+
 
 app = Flask(__name__)
 
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent
+#print(BASE_DIR)
 
-#FIXME: CHANGE THIS PATH BY CONSIDERING DJANGO PATH BASE PATH + FILE_NAME
+
 # Load data and FAISS index
-df = pd.read_csv('C:/Users/aefra/OneDrive/Desktop/embeddings/netflix_titles.csv')
-faiss_index = faiss.read_index('C:/Users/aefra/OneDrive/Desktop/embeddings/faiss_index.bin')
+df = pd.read_csv(BASE_DIR / 'netflix_titles.csv')
+faiss_index = faiss.read_index(str(BASE_DIR / 'faiss_index.bin'))
+
 
 # Helper function
 def create_text_format(row):
